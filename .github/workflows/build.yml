@@ -34,6 +34,13 @@ jobs:
           cp -r temp_app/android .
           rm -rf temp_app
 
+      - name: Fix App Name and Internet Permission
+        run: |
+          # Set proper App Name in AndroidManifest
+          sed -i 's/android:label="temp_app"/android:label="Prayer \&amp; Tasbeeh"/' android/app/src/main/AndroidManifest.xml
+          # Add Internet Permission
+          sed -i '/<manifest/a \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+
       - name: Create Keystore for App Signing
         run: |
           keytool -genkeypair -v -keystore android/app/release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias key -storepass android -keypass android -dname "CN=PrayerApp, OU=Dev, O=Prayer, L=City, S=State, C=IN"
