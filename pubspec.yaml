@@ -1,5 +1,5 @@
 name: prayer_tasbeeh_app
-description: "A personal Prayer and Tasbeeh companion app."
+description: "A simple Prayer & Tasbeeh Companion App"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,14 +9,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.6
   http: ^1.2.0
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+  audioplayers: ^6.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "ne_launcher_icon"
+  ios: true
+  image_path: "assets/app_icon.png"
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true
-  
+  assets:
+    - assets/app_icon.png
+    
