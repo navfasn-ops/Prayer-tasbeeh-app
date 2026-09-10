@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Set up Java JDK
         uses: actions/setup-java@v3
@@ -25,6 +26,16 @@ jobs:
         with:
           flutter-version: '3.19.x'
           channel: 'stable'
+
+      - name: Create Android Project Structure
+        run: |
+          mkdir temp_app
+          mv lib pubspec.yaml temp_app/
+          cd temp_app
+          flutter create . --overwrite --platforms=android
+          mv * .github .. 2>/dev/null || true
+          cd ..
+          rm -rf temp_app
 
       - name: Install Dependencies
         run: flutter pub get
