@@ -30,22 +30,30 @@ jobs:
       - name: Create Android Project Structure
         run: |
           mkdir temp_app
-          mv lib pubspec.yaml temp_app/
-          cd temp_app
-          flutter create . --overwrite --platforms=android
-          mv * .github .. 2>/dev/null || true
-          cd ..
+          flutter create temp_app --org com.prayer.tasbeeh --platforms=android --app-name "Prayer & Tasbeeh"
+          cp -r temp_app/android .
           rm -rf temp_app
+
+      - name: Create Keystore for App Signing
+        run: |
+          keytool -genkeypair -v -keystore android/app/release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias key -storepass android -keypass android -dname "CN=PrayerApp, OU=Dev, O=Prayer, L=City, S=State, C=IN"
+
+      - name: Configure Gradle Signings
+        run: |
+          echo "storePassword=android" > android/key.properties
+          echo "keyPassword=android" >> android/key.properties
+          echo "keyAlias=key" >> android/key.properties
+          echo "storeFile=release-key.jks" >> android/key.properties
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build Signed APK
         run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: Prayer-and-Tasbeeh-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           
