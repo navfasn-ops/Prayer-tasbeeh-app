@@ -30,7 +30,7 @@ jobs:
       - name: Create Android Project Structure
         run: |
           mkdir temp_app
-          flutter create temp_app --org com.prayer.tasbeeh --platforms=android --app-name "Prayer & Tasbeeh"
+          flutter create temp_app --org com.prayer.tasbeeh --platforms=android
           cp -r temp_app/android .
           rm -rf temp_app
 
