@@ -1,7 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const PrayerTasbeehApp());
@@ -13,57 +14,92 @@ class PrayerTasbeehApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'പ്രയർ & തസ്ബീഹ്',
+      title: 'Prayer & Tasbeeh',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.teal,
-        useMaterial3: true,
+        brightness: Brightness.dark,
+        primaryColor: const Color(0xFF0F382C),
+        scaffoldBackgroundColor: const Color(0xFF0D1B1E),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFD4AF37), // Gold
+          secondary: Color(0xFF0F382C),
+          surface: Color(0xFF162629),
+        ),
+        fontFamily: 'Roboto',
       ),
-      home: const MainTabScreen(),
+      home: const MainHomeScreen(),
     );
   }
 }
 
-class MainTabScreen extends StatelessWidget {
-  const MainTabScreen({super.key});
+class MainHomeScreen extends StatefulWidget {
+  const MainHomeScreen({super.key});
+
+  @override
+  State<MainHomeScreen> createState() => _MainHomeScreenState();
+}
+
+class _MainHomeScreenState extends State<MainHomeScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    const PrayerTimesPage(),
+    const TasbeehPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('പ്രയർ & തസ്ബീഹ് കോമ്പാനിയൻ'),
-          centerTitle: true,
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.access_time), text: 'നിസ്കാര സമയം'),
-              Tab(icon: Icon(Icons.touch_app), text: 'തസ്ബീഹ് കൗണ്ടർ'),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Prayer & Tasbeeh',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFD4AF37),
+            letterSpacing: 1.2,
           ),
         ),
-        body: const TabBarView(
-          children: [
-            PrayerTimesTab(),
-            TasbeehCounterTab(),
-          ],
-        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFF0F382C),
+        elevation: 4,
+      ),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        backgroundColor: const Color(0xFF0F382C),
+        selectedItemColor: const Color(0xFFD4AF37),
+        unselectedItemColor: Colors.white54,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.access_time_filled),
+            label: 'നിസ്കാര സമയം',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fingerprint),
+            label: 'തസ്ബീഹ് കൗണ്ടർ',
+          ),
+        ],
       ),
     );
   }
 }
-// ---------------- 1. PRAYER TIMES TAB ----------------
-class PrayerTimesTab extends StatefulWidget {
-  const PrayerTimesTab({super.key});
+
+class PrayerTimesPage extends StatefulWidget {
+  const PrayerTimesPage({super.key});
 
   @override
-  State<PrayerTimesTab> createState() => _PrayerTimesTabState();
+  State<PrayerTimesPage> createState() => _PrayerTimesPageState();
 }
 
-class _PrayerTimesTabState extends State<PrayerTimesTab> {
-  Map<String, dynamic>? _timings;
+class _PrayerTimesPageState extends State<PrayerTimesPage> {
+  Map<String, dynamic>? _prayerTimes;
   bool _isLoading = true;
-  String _error = '';
+  String _errorMessage = '';
 
   @override
   void initState() {
@@ -72,163 +108,234 @@ class _PrayerTimesTabState extends State<PrayerTimesTab> {
   }
 
   Future<void> _fetchPrayerTimes() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
     try {
-      final response = await http.get(Uri.parse(
-          'https://api.aladhan.com/v1/timings?latitude=11.0510&longitude=76.0711&method=2'));
+      final now = DateTime.now();
+      final formattedDate = DateFormat('dd-MM-yyyy').format(now);
+      final url = Uri.parse(
+          'https://api.aladhan.com/v1/timings/$formattedDate?latitude=11.2588&longitude=75.7804&method=2');
+
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          _timings = data['data']['timings'];
+          _prayerTimes = data['data']['timings'];
           _isLoading = false;
         });
       } else {
         setState(() {
-          _error = 'ഡാറ്റ ലഭ്യമായില്ല';
+          _errorMessage = 'ഡാറ്റ ലഭ്യമാക്കാൻ കഴിഞ്ഞില്ല';
           _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _error = 'നെറ്റ്‌വർക്ക് കണക്ഷൻ പരിശോധിക്കുക';
+        _errorMessage = 'ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക';
         _isLoading = false;
       });
     }
   }
-
-  @override
+    @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+      );
     }
 
-    if (_error.isNotEmpty) {
-      return Center(child: Text(_error, style: const TextStyle(color: Colors.red)));
-    }
-
-    final list = [
-      {'name': 'സുബ്ഹി (Fajr)', 'time': _timings?['Fajr']},
-      {'name': 'ളൊഹർ (Dhuhr)', 'time': _timings?['Dhuhr']},
-      {'name': 'അസർ (Asr)', 'time': _timings?['Asr']},
-      {'name': 'മഗ്‌രിബ് (Maghrib)', 'time': _timings?['Maghrib']},
-      {'name': 'ഇശാ (Isha)', 'time': _timings?['Isha']},
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final item = list[index];
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: const Icon(Icons.mosque, color: Colors.teal),
-            title: Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-            trailing: Text(
-              item['time'] ?? '',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-// ---------------- 2. TASBEEH COUNTER TAB ----------------
-class TasbeehCounterTab extends StatefulWidget {
-  const TasbeehCounterTab({super.key});
-
-  @override
-  State<TasbeehCounterTab> createState() => _TasbeehCounterTabState();
-}
-
-class _TasbeehCounterTabState extends State<TasbeehCounterTab> {
-  int _counter = 0;
-  int _dhikrIndex = 0;
-
-  final List<Map<String, dynamic>> _dhikrList = [
-    {'arabic': 'سُبْحَانَ اللَّهِ', 'malayalam': 'സുബ്ഹാനല്ലാഹ്', 'target': 33},
-    {'arabic': 'الْحَمْدُ لِلَّهِ', 'malayalam': 'അൽഹംദുലില്ലാഹ്', 'target': 33},
-    {'arabic': 'اللَّهُ أَكْبَرُ', 'malayalam': 'അല്ലാഹു അക്ബർ', 'target': 33},
-    {'arabic': 'صَلَّى اللَّهُ عَلَى مُحَمَّدٍ', 'malayalam': 'സല്ലല്ലാഹു അലാ മുഹമ്മദ്', 'target': 11},
-    {'arabic': 'لَا إِلَهَ إِلَّا اللَّهُ', 'malayalam': 'ലാഇലാഹ ഇല്ലല്ലാഹ്', 'target': 11},
-  ];
-
-  void _incrementCounter() {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _counter++;
-      if (_counter >= _dhikrList[_dhikrIndex]['target']) {
-        HapticFeedback.heavyImpact();
-        if (_dhikrIndex < _dhikrList.length - 1) {
-          _dhikrIndex++;
-          _counter = 0;
-        } else {
-          _showCompletionDialog();
-        }
-      }
-    });
-  }
-
-  void _showCompletionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('തസ്ബീഹ് പൂർത്തിയായി'),
-        content: const Text('അല്ലാഹു പ്രാർത്ഥനകൾ സ്വീകരിക്കുമാറാകട്ടെ (ആമീൻ).'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _counter = 0;
-                _dhikrIndex = 0;
-              });
-            },
-            child: const Text('വീണ്ടും തുടങ്ങുക'),
-          )
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final currentDhikr = _dhikrList[_dhikrIndex];
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
+    if (_errorMessage.isNotEmpty) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Icon(Icons.wifi_off, size: 60, color: Colors.redAccent),
+            const SizedBox(height: 16),
             Text(
-              currentDhikr['arabic'],
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.teal),
-              textAlign: TextAlign.center,
+              _errorMessage,
+              style: const TextStyle(fontSize: 18, color: Colors.white70),
             ),
-            const SizedBox(height: 8),
-            Text(
-              currentDhikr['malayalam'],
-              style: const TextStyle(fontSize: 20, color: Colors.black54),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _fetchPrayerTimes,
+              icon: const Icon(Icons.refresh),
+              label: const Text('വീണ്ടും ശ്രമിക്കുക'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD4AF37),
+                foregroundColor: Colors.black,
+              ),
+            )
+          ],
+        ),
+      );
+    }
+
+    final List<Map<String, String>> prayers = [
+      {'name': 'സുബ്ഹി (Fajr)', 'time': _prayerTimes?['Fajr'] ?? ''},
+      {'name': 'സൂര്യാദയം (Sunrise)', 'time': _prayerTimes?['Sunrise'] ?? ''},
+      {'name': 'ളൂഹർ (Dhuhr)', 'time': _prayerTimes?['Dhuhr'] ?? ''},
+      {'name': 'അസർ (Asr)', 'time': _prayerTimes?['Asr'] ?? ''},
+      {'name': 'മഗ്‌രിബ് (Maghrib)', 'time': _prayerTimes?['Maghrib'] ?? ''},
+      {'name': 'ഇശാ (Isha)', 'time': _prayerTimes?['Isha'] ?? ''},
+    ];
+
+    return RefreshIndicator(
+      onRefresh: _fetchPrayerTimes,
+      color: const Color(0xFFD4AF37),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: prayers.length,
+        itemBuilder: (context, index) {
+          final prayer = prayers[index];
+          return Card(
+            color: const Color(0xFF162629),
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+              side: const BorderSide(color: Color(0xFFD4AF37), width: 0.5),
             ),
-            const SizedBox(height: 35),
-            GestureDetector(
-              onTap: _incrementCounter,
-              child: CircleAvatar(
-                radius: 95,
-                backgroundColor: Colors.teal.shade500,
-                child: Text(
-                  '$_counter / ${currentDhikr['target']}',
-                  style: const TextStyle(fontSize: 38, color: Colors.white, fontWeight: FontWeight.bold),
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              leading: const Icon(Icons.access_time, color: Color(0xFFD4AF37)),
+              title: Text(
+                prayer['name']!,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white),
+              ),
+              trailing: Text(
+                prayer['time']!,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFD4AF37),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            const Text('എണ്ണാൻ വട്ടത്തിൽ ടാപ്പ് ചെയ്യുക', style: TextStyle(color: Colors.grey)),
-          ],
-        ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class TasbeehPage extends StatefulWidget {
+  const TasbeehPage({super.key});
+
+  @override
+  State<TasbeehPage> createState() => _TasbeehPageState();
+}
+
+class _TasbeehPageState extends State<TasbeehPage> {
+  int _counter = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCounter();
+  }
+
+  Future<void> _loadCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _counter = prefs.getInt('tasbeeh_count') ?? 0;
+    });
+  }
+
+  Future<void> _incrementCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _counter++;
+    });
+    await prefs.setInt('tasbeeh_count', _counter);
+  }
+
+  Future<void> _resetCounter() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _counter = 0;
+    });
+    await prefs.setInt('tasbeeh_count', 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF162629),
+              border: Border.all(color: const Color(0xFFD4AF37), width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD4AF37).withOpacity(0.2),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'എണ്ണം',
+                  style: TextStyle(fontSize: 18, color: Colors.white54),
+                ),
+                Text(
+                  '$_counter',
+                  style: const TextStyle(
+                    fontSize: 60,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFD4AF37),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+          GestureDetector(
+            onTap: _incrementCounter,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF0F382C),
+                border: Border.all(color: const Color(0xFFD4AF37), width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black45,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  )
+                ],
+              ),
+              child: const Icon(
+                Icons.touch_app,
+                size: 50,
+                color: Color(0xFFD4AF37),
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+          TextButton.icon(
+            onPressed: _resetCounter,
+            icon: const Icon(Icons.refresh, color: Colors.redAccent),
+            label: const Text(
+              'റീസെറ്റ് ചെയ്യുക',
+              style: TextStyle(color: Colors.redAccent, fontSize: 16),
+            ),
+          ),
+        ],
       ),
     );
   }
